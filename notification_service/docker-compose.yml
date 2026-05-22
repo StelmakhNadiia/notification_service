@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  notification-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: learning_platform_notification_service
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://notification_user:secure_pass_123@notification-db:5432/notification_db
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq-broker:5672//
+    depends_on:
+      notification-db:
+        condition: service_healthy
+
+  
+  notification-db:
+    image: postgres:15-alpine
+    container_name: learning_platform_notification_db
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=notification_user
+      - POSTGRES_PASSWORD=secure_pass_123
+      - POSTGRES_DB=notification_db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U notification_user -d notification_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
