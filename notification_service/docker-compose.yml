@@ -1,11 +1,51 @@
 version: '3.8'
 
 services:
+  rabbitmq-broker:
+    image: rabbitmq:3.11-management-alpine
+    container_name: e_learning_rabbitmq_broker
+    ports:
+      - "5672:5672"   
+      - "15672:15672" 
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - platform_network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  
+  notification-db:
+    image: postgres:15-alpine
+    container_name: e_learning_notification_db
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=notification_user
+      - POSTGRES_PASSWORD=secure_pass_123
+      - POSTGRES_DB=notification_db
+    volumes:
+      - pg_notification_data:/var/lib/postgresql/data
+    networks:
+      - platform_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U notification_user -d notification_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  
   notification-app:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: learning_platform_notification_service
+    container_name: e_learning_notification_app
     ports:
       - "8000:8000"
     environment:
@@ -14,19 +54,19 @@ services:
     depends_on:
       notification-db:
         condition: service_healthy
+      rabbitmq-broker:
+        condition: service_healthy
+    networks:
+      - platform_network
 
-  
-  notification-db:
-    image: postgres:15-alpine
-    container_name: learning_platform_notification_db
-    ports:
-      - "5432:5432"
-    environment:
-      - POSTGRES_USER=notification_user
-      - POSTGRES_PASSWORD=secure_pass_123
-      - POSTGRES_DB=notification_db
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U notification_user -d notification_db"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+
+volumes:
+  pg_notification_data:
+    driver: local
+  rabbitmq_data:
+    driver: local
+
+
+networks:
+  platform_network:
+    driver: bridge

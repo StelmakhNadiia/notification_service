@@ -12,7 +12,7 @@ class RabbitMQEventConsumer:
         self.channel = None
 
     async def start_consuming(self):
-        self.connection = await aiormq.from_url(settings.RABBITMQ_URL)
+        self.connection = await aiormq.connect(settings.RABBITMQ_URL)
         self.channel = await self.connection.channel()
         
 
