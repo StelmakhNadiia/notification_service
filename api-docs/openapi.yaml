@@ -1,0 +1,81 @@
+openapi: 3.0.3
+info:
+  title: Notification Service - Sync API Documentation
+  description: >
+    This specification defines the synchronous REST API exposed by the Notification Microservice. 
+    Following the reactive, event-driven architecture of the platform, synchronous communication 
+    is strictly limited to infrastructure and health monitoring endpoints to ensure low coupling 
+    across functional domains.
+  version: 1.0.0
+servers:
+  - url: http://localhost:8000
+    description: Local Development Server
+  - url: https://api.e-learning.platform/notifications
+    description: Production API Gateway Routing
+
+paths:
+  /health:
+    get:
+      summary: Microservice Health Check
+      description: >
+        Intercepts automated infrastructure ping requests to evaluate the operational status of the 
+        Notification Service. It verifies active database connections and internal dependencies 
+        without invoking heavy business logic layers.
+      operationId: checkHealth
+      responses:
+        '200':
+          description: The Notification Service is fully operational and healthy.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+              example:
+                status: "healthy"
+                timestamp: "2026-05-22T11:00:00Z"
+                dependencies:
+                  database: "connected"
+                  message_broker: "connected"
+        '503':
+          description: Service Unavailable. One or more critical internal dependencies have failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+              example:
+                status: "unhealthy"
+                timestamp: "2026-05-22T11:05:00Z"
+                dependencies:
+                  database: "disconnected"
+                  message_broker: "connected"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      required:
+        - status
+        - timestamp
+        - dependencies
+      properties:
+        status:
+          type: string
+          enum: [healthy, unhealthy]
+          description: The overall operational state of the microservice.
+        timestamp:
+          type: string
+          format: date-time
+          description: The exact ISO-8601 timestamp when the diagnostic check was executed.
+        dependencies:
+          type: object
+          required:
+            - database
+            - message_broker
+          properties:
+            database:
+              type: string
+              enum: [connected, disconnected]
+              description: Connection status to the Notification Database isolation layer.
+            message_broker:
+              type: string
+              enum: [connected, disconnected]
+              description: Connection status to the RabbitMQ/Kafka event backbone.
